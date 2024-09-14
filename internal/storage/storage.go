@@ -6,5 +6,6 @@ import (
 
 type Storage interface {
 	AddTransaction(address string, tx model.Transaction) error
-	GetTransactions(address string) []model.Transaction
+	Transactions(address string) []model.Transaction
+	// Subscribes() map[string]bool
 }

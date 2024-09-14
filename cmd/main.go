@@ -10,7 +10,7 @@ import (
 
 	"github.com/Drynok/tx-parser/internal/api"
 	"github.com/Drynok/tx-parser/internal/parser"
-	"github.com/Drynok/tx-parser/internal/rpc_client"
+	rpc "github.com/Drynok/tx-parser/internal/rpc"
 	"github.com/Drynok/tx-parser/internal/storage"
 	"github.com/Drynok/tx-parser/pkg/logger"
 )
@@ -22,16 +22,17 @@ func main() {
 	}
 
 	storage := storage.NewMemoryStorage()
-	client := rpc_client.NewClient(rpcURL)
-	logger := logger.NewSimpleLogger()
-
-	p := parser.NewEthereumParser(client, storage, logger)
+	client := rpc.NewClient(rpcURL)
+	logger := logger.NewLogger()
 	ctx := context.Background()
 
-	p.Start(ctx)
+	parser := parser.NewEthereumParser(client, storage, logger)
+
+	// Parser start.
+	parser.Start(ctx)
 
 	// API endpoints.
-	handler := api.NewHandler(p)
+	handler := api.NewHandler(parser)
 
 	http.HandleFunc("/current-block", handler.GetCurrentBlock)
 	http.HandleFunc("/subscribe", handler.Subscribe)
