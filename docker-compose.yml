@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+   tx-parser:
+      build: .
+      ports:
+         - '8080:8080'
+      environment:
+         - ETHEREUM_RPC_URL=https://ethereum-rpc.publicnode.com
+         # - DATABASE_URL=postgres://user:password@db:5432/database
+      restart: always
+#   db:
+#     image: postgres
+#     environment:
+#       - POSTGRES_USER=user
+#       - POSTGRES_PASSWORD=password
+#       - POSTGRES_DB=database
