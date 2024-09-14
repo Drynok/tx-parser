@@ -12,9 +12,9 @@ Ethereum blockchain parser that allows querying transactions for addresses.
 
 1. API Endpoints:
 
--  GET /current-block - get the current parsed block
--  POST /subscribe - subscribe to an address
--  GET /transactions?address=0x123 - get transactions for a address
+-  GET /current-block - get the current parsed block (curl http://localhost:8080/current_block)
+-  POST /subscribe - subscribe to an address (curl -X POST -H "Content-Type: application/json" -d '{"address":"0x742d35Cc6634C0532925a3b844Bc454e4438f44e"}' http://localhost:8080/subscribe)
+-  GET /transactions/0x123 - get transactions for a address (curl http://localhost:8080/transactions/0x742d35Cc6634C0532925a3b844Bc454e4438f44e)
 
 ## Configuration
 
@@ -25,6 +25,9 @@ https://ethereum-rpc.publicnode.com
 
 To run tests:
 `make test`
+
+To run lint:
+`make lint`
 
 ## License
 
