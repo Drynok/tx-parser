@@ -13,7 +13,7 @@ import (
 )
 
 type EthereumParser struct {
-	currentBlock model.Block
+	currentBlock *model.Block
 	subscribers  map[string]bool
 	transactions map[string][]model.Transaction
 
@@ -85,7 +85,6 @@ func (p *EthereumParser) pollBlocks() error {
 			continue
 		}
 
-		p.processBlock(block)
 		if err := p.processBlock(block); err != nil {
 			return fmt.Errorf("error processing block %d: %w", block, err)
 		}
@@ -98,7 +97,7 @@ func (p *EthereumParser) pollBlocks() error {
 	return nil
 }
 
-func (p *EthereumParser) processBlock(block model.Block) error {
+func (p *EthereumParser) processBlock(block *model.Block) error {
 	for _, tx := range block.Transactions {
 		if err := p.storage.AddTransaction(tx.From, tx); err != nil {
 			p.logger.Error("error adding transaction: %w", err)
