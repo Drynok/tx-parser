@@ -13,6 +13,7 @@ import (
 	rpc "github.com/Drynok/tx-parser/internal/rpc"
 	"github.com/Drynok/tx-parser/internal/storage"
 	"github.com/Drynok/tx-parser/pkg/logger"
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -34,9 +35,12 @@ func main() {
 	// API endpoints.
 	handler := api.NewHandler(parser)
 
-	http.HandleFunc("/current-block", handler.GetCurrentBlock)
-	http.HandleFunc("/subscribe", handler.Subscribe)
-	http.HandleFunc("/transactions", handler.GetTransactions)
+	// Gin router
+	router := gin.Default()
+
+	router.GET("/current-block", handler.GetCurrentBlock)
+	router.POST("/subscribe", handler.Subscribe)
+	router.GET("/transactions", handler.GetTransactions)
 
 	// Get the port from the environment variable or default to ":8080"
 	port := os.Getenv("PORT")
@@ -62,7 +66,7 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
+	// Gracefully shutdown the server
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

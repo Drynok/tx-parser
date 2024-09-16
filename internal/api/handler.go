@@ -1,10 +1,10 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/Drynok/tx-parser/internal/parser"
+	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
@@ -15,29 +15,29 @@ func NewHandler(p parser.Parser) *Handler {
 	return &Handler{parser: p}
 }
 
-func (h *Handler) GetCurrentBlock(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) GetCurrentBlock(c *gin.Context) {
 	block := h.parser.GetCurrentBlock()
-	json.NewEncoder(w).Encode(map[string]int{"current_block": block})
+	c.JSON(http.StatusOK, gin.H{"current_block": block})
 }
 
-func (h *Handler) Subscribe(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) Subscribe(c *gin.Context) {
 	var req struct {
-		Address string `json:"address"`
+		Address string `json:"address" binding:"required"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	success := h.parser.Subscribe(req.Address)
-	json.NewEncoder(w).Encode(map[string]bool{"success": success})
+	c.JSON(http.StatusOK, gin.H{"success": success})
 }
 
-func (h *Handler) GetTransactions(w http.ResponseWriter, r *http.Request) {
-	address := r.URL.Query().Get("address")
+func (h *Handler) GetTransactions(c *gin.Context) {
+	address := c.Query("address")
 	if address == "" {
-		http.Error(w, "Address is required", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Address is required"})
 		return
 	}
 	transactions := h.parser.GetTransactions(address)
-	json.NewEncoder(w).Encode(transactions)
+	c.JSON(http.StatusOK, transactions)
 }
