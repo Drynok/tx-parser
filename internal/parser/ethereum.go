@@ -14,25 +14,23 @@ import (
 
 type EthereumParser struct {
 	currentBlock *model.Block
-	subscribers  map[string]bool
-	transactions map[string][]model.Transaction
+	mu           sync.RWMutex
 
-	mu sync.RWMutex
-
-	// TODO: Move all transactions and subscribers to storage
 	storage   storage.Storage
 	rpcClient rpc.Client
 	logger    logger.Logger
 }
 
+// NewEthereumParser construstor.
 func NewEthereumParser(cli rpc.Client, storage storage.Storage, logger logger.Logger) *EthereumParser {
 	return &EthereumParser{
-		storage:   storage,
 		rpcClient: cli,
+		storage:   storage,
 		logger:    logger,
 	}
 }
 
+// GetCurrentBlock returns the current block number.
 func (p *EthereumParser) GetCurrentBlock() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
@@ -40,13 +38,7 @@ func (p *EthereumParser) GetCurrentBlock() int {
 }
 
 func (p *EthereumParser) Subscribe(address string) bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if _, exists := p.subscribers[address]; exists {
-		return false
-	}
-	p.subscribers[address] = true
-	return true
+	return p.storage.Subscribe(address)
 }
 
 func (p *EthereumParser) GetTransactions(address string) []model.Transaction {
@@ -86,7 +78,7 @@ func (p *EthereumParser) pollBlocks() error {
 		}
 
 		if err := p.processBlock(block); err != nil {
-			return fmt.Errorf("error processing block %d: %w", block, err)
+			return fmt.Errorf("error processing block %v: %w", block, err)
 		}
 
 		p.mu.Lock()
@@ -112,8 +104,5 @@ func (p *EthereumParser) processBlock(block *model.Block) error {
 }
 
 func (p *EthereumParser) isSubscribed(address string) bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	_, ok := p.subscribers[address]
-	return ok
+	return p.storage.IsSubscribed(address)
 }

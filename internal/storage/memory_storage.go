@@ -31,3 +31,20 @@ func (m *MemoryStorage) Transactions(address string) []model.Transaction {
 	defer m.mu.RUnlock()
 	return m.transactions[address]
 }
+
+func (m *MemoryStorage) IsSubscribed(address string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	_, ok := m.subscribers[address]
+	return ok
+}
+
+func (m *MemoryStorage) Subscribe(address string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.subscribers[address]; ok {
+		return false
+	}
+	m.subscribers[address] = true
+	return true
+}
