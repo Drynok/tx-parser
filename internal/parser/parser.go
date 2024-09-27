@@ -3,7 +3,6 @@ package parser
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/Drynok/tx-parser/internal/model"
@@ -19,20 +18,20 @@ type Parser interface {
 }
 
 type EthereumParser struct {
-	currentBlock *model.Block
+	CurrentBlock *model.Block
 	mu           sync.RWMutex
 
-	storage   storage.Storage
-	rpcClient rpc.Client
-	logger    logger.Logger
+	Storage   storage.Storage
+	RPCClient rpc.Client
+	Logger    logger.Logger
 }
 
 // NewEthereumParser construstor.
 func NewEthereumParser(cli rpc.Client, storage storage.Storage, logger logger.Logger) *EthereumParser {
 	return &EthereumParser{
-		rpcClient: cli,
-		storage:   storage,
-		logger:    logger,
+		RPCClient: cli,
+		Storage:   storage,
+		Logger:    logger,
 	}
 }
 
@@ -40,15 +39,15 @@ func NewEthereumParser(cli rpc.Client, storage storage.Storage, logger logger.Lo
 func (p *EthereumParser) GetCurrentBlock() int {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	return p.currentBlock.Number
+	return p.CurrentBlock.Number
 }
 
 func (p *EthereumParser) Subscribe(address string) bool {
-	return p.storage.Subscribe(address)
+	return p.Storage.Subscribe(address)
 }
 
 func (p *EthereumParser) GetTransactions(address string) []model.Transaction {
-	return p.storage.Transactions(address)
+	return p.Storage.Transactions(address)
 }
 
 func (p *EthereumParser) Start(ctx context.Context) error {
@@ -65,9 +64,9 @@ func (p *EthereumParser) Start(ctx context.Context) error {
 }
 
 func (p *EthereumParser) pollBlocks() error {
-	latestBlock, err := p.rpcClient.GetLatestBlockNumber()
+	latestBlock, err := p.RPCClient.GetLatestBlockNumber()
 	if err != nil {
-		log.Println("Error fetching latest block:", err)
+		p.Logger.Error("error fetching latest block:", err)
 		return fmt.Errorf("error getting latest block number: %w", err)
 	}
 
@@ -75,21 +74,32 @@ func (p *EthereumParser) pollBlocks() error {
 		return nil
 	}
 
-	for int(p.currentBlock.Number) < latestBlock {
-		p.currentBlock.Number++
-		block, err := p.rpcClient.GetBlockByNumber(p.currentBlock.Number)
-		if err != nil {
-			p.logger.Error("Failed to get block", "block", p.currentBlock, "error", err)
-			continue
-		}
+	var wg sync.WaitGroup
+	errChan := make(chan error, latestBlock-p.GetCurrentBlock())
 
-		if err := p.processBlock(block); err != nil {
-			return fmt.Errorf("error processing block %v: %w", block, err)
-		}
+	for int(p.CurrentBlock.Number) < latestBlock {
+		wg.Add(1)
+		go func(blockNumber int) {
+			defer wg.Done()
+			block, err := p.RPCClient.GetBlockByNumber(blockNumber)
+			if err != nil {
+				p.Logger.Error("failed to get block %d: %w", blockNumber, err)
+				errChan <- fmt.Errorf("failed to get block %d: %w", blockNumber, err)
+				return
+			}
+			if err := p.processBlock(block); err != nil {
+				p.Logger.Error("error processing block", "error", err)
+				errChan <- fmt.Errorf("error processing block %d: %w", blockNumber, err)
+			}
+		}(p.CurrentBlock.Number + 1)
+		p.CurrentBlock.Number++
+	}
 
-		p.mu.Lock()
-		p.currentBlock = block
-		p.mu.Unlock()
+	wg.Wait()
+	close(errChan)
+
+	for err := range errChan {
+		p.Logger.Error("Error during block processing", "error", err)
 	}
 
 	return nil
@@ -97,18 +107,19 @@ func (p *EthereumParser) pollBlocks() error {
 
 func (p *EthereumParser) processBlock(block *model.Block) error {
 	for _, tx := range block.Transactions {
-		if err := p.storage.AddTransaction(tx.From, tx); err != nil {
-			p.logger.Error("error adding transaction: %w", err)
+		if err := p.Storage.AddTransaction(tx.From, tx); err != nil {
+			p.Logger.Error("error adding transaction: %w", err)
 			return fmt.Errorf("error adding transaction: %w", err)
 		}
-		if err := p.storage.AddTransaction(tx.To, tx); err != nil {
-			p.logger.Error("error adding transaction: %w", err)
+		if err := p.Storage.AddTransaction(tx.To, tx); err != nil {
+			p.Logger.Error("error adding transaction: %w", err)
 			return fmt.Errorf("error adding transaction: %w", err)
 		}
 	}
+
 	return nil
 }
 
 func (p *EthereumParser) isSubscribed(address string) bool {
-	return p.storage.IsSubscribed(address)
+	return p.Storage.IsSubscribed(address)
 }
