@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Drynok/tx-parser/internal/parser"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +25,7 @@ func (h *Handler) Subscribe(c *gin.Context) {
 	var req struct {
 		Address string `json:"address" binding:"required"`
 	}
+
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

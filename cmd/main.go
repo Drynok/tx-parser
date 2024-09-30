@@ -8,11 +8,13 @@ import (
 	"syscall"
 	"time"
 
+	rpc "github.com/Drynok/tx-parser/internal/rpc"
+
 	"github.com/Drynok/tx-parser/internal/api"
 	"github.com/Drynok/tx-parser/internal/parser"
-	rpc "github.com/Drynok/tx-parser/internal/rpc"
 	"github.com/Drynok/tx-parser/internal/storage"
 	"github.com/Drynok/tx-parser/pkg/logger"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -30,7 +32,11 @@ func main() {
 	parser := parser.NewEthereumParser(client, storage, logger)
 
 	// Parser start.
-	parser.Start(ctx)
+	err := parser.Start(ctx)
+
+	if err != nil {
+		logger.Error("Failed to start parser", "error", err)
+	}
 
 	// API endpoints.
 	handler := api.NewHandler(parser)
